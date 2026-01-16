@@ -1,5 +1,6 @@
 """Exceptions for bgg-pi."""
 
+
 class BggError(Exception):
     """Base exception for BGG errors."""
 
