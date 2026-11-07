@@ -224,8 +224,9 @@ class BggClient:
                             "objectid": g_id,
                             "subtype": subtype_val,
                             "name": item.findtext("name"),
-                            "image": item.findtext("image"),
-                            "thumbnail": item.findtext("thumbnail"),
+                            "image": (item.findtext("image") or "").strip() or None,
+                            "thumbnail": (item.findtext("thumbnail") or "").strip()
+                            or None,
                             "yearpublished": item.findtext("yearpublished"),
                             "numplays": int(item.findtext("numplays", "0")),
                             "own": status.get("own") == "1",
@@ -320,8 +321,9 @@ class BggClient:
                         {
                             "id": g_id,
                             "name": name,
-                            "image": item.findtext("image"),
-                            "thumbnail": item.findtext("thumbnail"),
+                            "image": (item.findtext("image") or "").strip() or None,
+                            "thumbnail": (item.findtext("thumbnail") or "").strip()
+                            or None,
                             "yearpublished": self._get_xml_val(item, "yearpublished"),
                             "minplayers": self._get_xml_val(item, "minplayers"),
                             "maxplayers": self._get_xml_val(item, "maxplayers"),
