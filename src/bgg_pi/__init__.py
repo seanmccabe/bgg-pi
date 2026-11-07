@@ -1,5 +1,12 @@
 from .client import BggClient
+from .const import API_HEADERS, BGG_URL, DEFAULT_USER_AGENT
 from .exceptions import BggError, BggLoginError
-from .const import BGG_URL
 
-__all__ = ["BggClient", "BggError", "BggLoginError", "BGG_URL"]
+__all__ = [
+    "API_HEADERS",
+    "BGG_URL",
+    "DEFAULT_USER_AGENT",
+    "BggClient",
+    "BggError",
+    "BggLoginError",
+]

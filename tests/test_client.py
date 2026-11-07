@@ -1,7 +1,9 @@
 """Tests for BGG API Client."""
+import aiohttp
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from bgg_pi.client import BggClient
+from bgg_pi.const import API_HEADERS, DEFAULT_USER_AGENT
 import xml.etree.ElementTree as ET
 
 
@@ -15,6 +17,31 @@ def mock_session():
 def client(mock_session):
     """BggClient instance."""
     return BggClient(mock_session, "test_user", "password")
+
+
+def test_default_and_custom_headers(mock_session):
+    """Test default XML API headers, custom user_agent, and credential isolation."""
+    default_client = BggClient(mock_session, "test_user")
+    assert default_client.headers["Accept"] == "application/xml"
+    assert default_client.headers["User-Agent"] == DEFAULT_USER_AGENT
+    assert "Mozilla" not in default_client.headers["User-Agent"]
+    assert "Authorization" not in default_client.headers
+
+    custom_ua = "BGGSync/1.3.1 (+https://github.com/seanmccabe/bgg-sync)"
+    custom_client = BggClient(
+        mock_session,
+        "second_user",
+        api_token="secret_token",
+        user_agent=custom_ua,
+    )
+    assert custom_client.headers["Accept"] == "application/xml"
+    assert custom_client.headers["User-Agent"] == custom_ua
+    assert custom_client.headers["Authorization"] == "Bearer secret_token"
+
+    # Ensure shared API_HEADERS dict and other client instances are not mutated
+    assert "Authorization" not in API_HEADERS
+    assert API_HEADERS["User-Agent"] == DEFAULT_USER_AGENT
+    assert default_client.headers["User-Agent"] == DEFAULT_USER_AGENT
 
 
 async def test_clean_bgg_text(client):
@@ -138,7 +165,6 @@ async def test_fetch_thing_details_error_handling(client, mock_session):
 async def test_login(client, mock_session):
     """Test login logic."""
     # Success
-    # Success
     mock_resp = AsyncMock()
     mock_resp.status = 200
     mock_resp.__aenter__.return_value = mock_resp
@@ -148,7 +174,7 @@ async def test_login(client, mock_session):
     assert client.logged_in is True
 
     # Failure
-    mock_session.post.side_effect = Exception("Conn Error")
+    mock_session.post.side_effect = aiohttp.ClientError("Conn Error")
     assert await client.login() is False
 
 
@@ -160,6 +186,7 @@ async def test_validate_auth(client, mock_session):
     mock_session.get.return_value = mock_resp
 
     assert await client.validate_auth() == 200
+    assert mock_session.get.call_args.kwargs["headers"] == client.headers
 
 
 async def test_record_play(client, mock_session):
@@ -231,7 +258,7 @@ async def test_record_play_error(client, mock_session):
 
 async def test_record_play_exception(client, mock_session):
     """Test record_play handles generic exceptions."""
-    mock_session.post.side_effect = Exception("Boom")
+    mock_session.post.side_effect = aiohttp.ClientError("Boom")
     success = await client.record_play(123)
     assert success is False
 

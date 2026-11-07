@@ -9,7 +9,7 @@ from typing import Any
 
 import aiohttp
 
-from .const import BGG_URL, BASE_URL
+from .const import API_HEADERS, BASE_URL, BGG_URL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,6 +23,7 @@ class BggClient:
         username: str,
         password: str | None = None,
         api_token: str | None = None,
+        user_agent: str | None = None,
     ) -> None:
         """Initialize the client."""
         self.username = username
@@ -30,9 +31,10 @@ class BggClient:
         self.api_token = api_token
         self._session = session
         self.logged_in = False
-        self.headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
-        }
+        self.headers = API_HEADERS.copy()
+
+        if user_agent:
+            self.headers["User-Agent"] = user_agent
 
         if self.api_token:
             self.headers["Authorization"] = f"Bearer {self.api_token}"
@@ -108,7 +110,7 @@ class BggClient:
                 )
                 self.logged_in = True
                 return True
-        except Exception as err:
+        except (aiohttp.ClientError, TimeoutError) as err:
             _LOGGER.error("Login failed for %s: %s", self.username, err)
             return False
 
@@ -122,7 +124,7 @@ class BggClient:
             text = await resp.text()
             try:
                 root = ET.fromstring(text)
-            except Exception as e:
+            except ET.ParseError as e:
                 _LOGGER.error("Failed to parse plays XML: %s", e)
                 return {"status": resp.status, "total": 0, "last_play": None}
 
@@ -161,7 +163,7 @@ class BggClient:
             try:
                 root = ET.fromstring(text)
                 return int(root.get("total", 0))
-            except Exception as e:
+            except (ET.ParseError, TypeError, ValueError) as e:
                 _LOGGER.error("Failed to parse game plays XML for %s: %s", game_id, e)
                 return 0
 
@@ -190,7 +192,7 @@ class BggClient:
             text = await resp.text()
             try:
                 root = ET.fromstring(text)
-            except Exception as e:
+            except ET.ParseError as e:
                 _LOGGER.error("Failed to parse collection XML for %s: %s", subtype, e)
                 return {"status": resp.status, "items": []}
 
@@ -222,8 +224,9 @@ class BggClient:
                             "objectid": g_id,
                             "subtype": subtype_val,
                             "name": item.findtext("name"),
-                            "image": item.findtext("image"),
-                            "thumbnail": item.findtext("thumbnail"),
+                            "image": (item.findtext("image") or "").strip() or None,
+                            "thumbnail": (item.findtext("thumbnail") or "").strip()
+                            or None,
                             "yearpublished": item.findtext("yearpublished"),
                             "numplays": int(item.findtext("numplays", "0")),
                             "own": status.get("own") == "1",
@@ -287,7 +290,7 @@ class BggClient:
             text = await resp.text()
             try:
                 root = ET.fromstring(text)
-            except Exception as e:
+            except ET.ParseError as e:
                 _LOGGER.error("Failed to parse BGG XML: %s", e)
                 return []
 
@@ -318,8 +321,9 @@ class BggClient:
                         {
                             "id": g_id,
                             "name": name,
-                            "image": item.findtext("image"),
-                            "thumbnail": item.findtext("thumbnail"),
+                            "image": (item.findtext("image") or "").strip() or None,
+                            "thumbnail": (item.findtext("thumbnail") or "").strip()
+                            or None,
                             "yearpublished": self._get_xml_val(item, "yearpublished"),
                             "minplayers": self._get_xml_val(item, "minplayers"),
                             "maxplayers": self._get_xml_val(item, "maxplayers"),
@@ -409,6 +413,6 @@ class BggClient:
                     _LOGGER.error("Failed to record play on BGG: %s", resp_text)
                     return False
 
-        except Exception as err:
+        except (aiohttp.ClientError, TimeoutError) as err:
             _LOGGER.error("Error recording play on BGG: %s", err)
             return False
