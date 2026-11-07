@@ -1,10 +1,13 @@
 """Tests for BGG API Client."""
+
+from unittest.mock import AsyncMock, MagicMock
+import xml.etree.ElementTree as ET
+
 import aiohttp
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+
 from bgg_pi.client import BggClient
 from bgg_pi.const import API_HEADERS, DEFAULT_USER_AGENT
-import xml.etree.ElementTree as ET
 
 
 @pytest.fixture
@@ -27,7 +30,7 @@ def test_default_and_custom_headers(mock_session):
     assert "Mozilla" not in default_client.headers["User-Agent"]
     assert "Authorization" not in default_client.headers
 
-    custom_ua = "BGGSync/1.3.1 (+https://github.com/seanmccabe/bgg-sync)"
+    custom_ua = "BGGSync/1.4.0 (+https://github.com/seanmccabe/bgg-sync)"
     custom_client = BggClient(
         mock_session,
         "second_user",
@@ -115,6 +118,13 @@ async def test_fetch_thing_details_parsing(client, mock_session):
         <!-- Item 1: Valid Rank -->
         <item id="4" type="boardgame">
             <name type="primary" value="Ranked Game" />
+            <minage value="10" />
+            <poll-summary name="suggested_numplayers">
+                <result name="bestwith" value="Best with 3 players" />
+                <result name="recommmendedwith" value="Recommended with 2–4 players" />
+            </poll-summary>
+            <link type="boardgamecategory" id="1" value="Medieval" />
+            <link type="boardgamemechanic" id="2" value="Hand Management" />
             <statistics>
                 <ratings>
                     <ranks>
@@ -140,6 +150,11 @@ async def test_fetch_thing_details_parsing(client, mock_session):
     assert result[0]["name"] == "Ranked Game"
     assert result[0]["rank"] == "100"
     assert result[0]["rating"] == "8.5"
+    assert result[0]["minage"] == "10"
+    assert result[0]["best_players"] == "Best with 3 players"
+    assert result[0]["recommended_players"] == "Recommended with 2–4 players"
+    assert result[0]["categories"] == ["Medieval"]
+    assert result[0]["mechanics"] == ["Hand Management"]
 
 
 async def test_fetch_thing_details_error_handling(client, mock_session):
@@ -322,7 +337,10 @@ async def test_fetch_collection_parsing_error(client, mock_session):
         </item>
         <item objectid="123" subtype="boardgame">
             <name>Good Game</name>
-            <status own="1"/>
+            <status own="1" prevowned="1"/>
+            <stats>
+                <rating value="8.5" />
+            </stats>
         </item>
     </items>
     """
@@ -335,6 +353,8 @@ async def test_fetch_collection_parsing_error(client, mock_session):
     result = await client.fetch_collection()
     assert len(result["items"]) == 1
     assert result["items"][0]["objectid"] == 123
+    assert result["items"][0]["prevowned"] is True
+    assert result["items"][0]["user_rating"] == "8.5"
 
 
 async def test_fetch_thing_details_empty(client):

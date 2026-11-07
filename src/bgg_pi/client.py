@@ -219,6 +219,15 @@ class BggClient:
                                 rank_val = rank.get("value")
                                 break
 
+                    raw_user_rating = (
+                        rating.get("value") if rating is not None else None
+                    )
+                    user_rating = (
+                        raw_user_rating
+                        if raw_user_rating and raw_user_rating != "N/A"
+                        else None
+                    )
+
                     items.append(
                         {
                             "objectid": g_id,
@@ -230,6 +239,7 @@ class BggClient:
                             "yearpublished": item.findtext("yearpublished"),
                             "numplays": int(item.findtext("numplays", "0")),
                             "own": status.get("own") == "1",
+                            "prevowned": status.get("prevowned") == "1",
                             "wishlist": status.get("wishlist") == "1",
                             "wanttoplay": status.get("wanttoplay") == "1",
                             "wanttobuy": status.get("wanttobuy") == "1",
@@ -251,6 +261,7 @@ class BggClient:
                             if stats is not None
                             else None,
                             "rank": rank_val,
+                            "user_rating": user_rating,
                             "rating": self._get_xml_val(rating, "average"),
                             "bayes_rating": self._get_xml_val(rating, "bayesaverage"),
                             "weight": self._get_xml_val(rating, "averageweight"),
@@ -317,6 +328,30 @@ class BggClient:
 
                     ratings = item.find("statistics/ratings")
 
+                    best_players = None
+                    recommended_players = None
+                    poll_summary = item.find("poll-summary[@name='suggested_numplayers']")
+                    if poll_summary is not None:
+                        for res in poll_summary.findall("result"):
+                            res_name = res.get("name")
+                            if res_name == "bestwith":
+                                best_players = res.get("value")
+                            elif res_name in ("recommmendedwith", "recommendedwith"):
+                                recommended_players = res.get("value")
+
+                    categories = [
+                        val
+                        for link in item.findall("link")
+                        if link.get("type") == "boardgamecategory"
+                        and (val := link.get("value"))
+                    ]
+                    mechanics = [
+                        val
+                        for link in item.findall("link")
+                        if link.get("type") == "boardgamemechanic"
+                        and (val := link.get("value"))
+                    ]
+
                     parsed_items.append(
                         {
                             "id": g_id,
@@ -330,6 +365,11 @@ class BggClient:
                             "playingtime": self._get_xml_val(item, "playingtime"),
                             "minplaytime": self._get_xml_val(item, "minplaytime"),
                             "maxplaytime": self._get_xml_val(item, "maxplaytime"),
+                            "minage": self._get_xml_val(item, "minage"),
+                            "best_players": best_players,
+                            "recommended_players": recommended_players,
+                            "categories": categories,
+                            "mechanics": mechanics,
                             "rank": rank_val,
                             "weight": self._get_xml_val(ratings, "averageweight"),
                             "rating": self._get_xml_val(ratings, "average"),
