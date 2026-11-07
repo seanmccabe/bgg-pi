@@ -9,7 +9,7 @@ from typing import Any
 
 import aiohttp
 
-from .const import API_HEADERS, BGG_URL, BASE_URL
+from .const import API_HEADERS, BASE_URL, BGG_URL
 
 _LOGGER = logging.getLogger(__name__)
 
