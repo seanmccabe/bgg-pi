@@ -1,4 +1,5 @@
 """Tests for BGG API Client."""
+import aiohttp
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from bgg_pi.client import BggClient
@@ -173,7 +174,7 @@ async def test_login(client, mock_session):
     assert client.logged_in is True
 
     # Failure
-    mock_session.post.side_effect = Exception("Conn Error")
+    mock_session.post.side_effect = aiohttp.ClientError("Conn Error")
     assert await client.login() is False
 
 
@@ -257,7 +258,7 @@ async def test_record_play_error(client, mock_session):
 
 async def test_record_play_exception(client, mock_session):
     """Test record_play handles generic exceptions."""
-    mock_session.post.side_effect = Exception("Boom")
+    mock_session.post.side_effect = aiohttp.ClientError("Boom")
     success = await client.record_play(123)
     assert success is False
 

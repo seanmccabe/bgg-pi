@@ -110,7 +110,7 @@ class BggClient:
                 )
                 self.logged_in = True
                 return True
-        except Exception as err:
+        except (aiohttp.ClientError, TimeoutError) as err:
             _LOGGER.error("Login failed for %s: %s", self.username, err)
             return False
 
@@ -124,7 +124,7 @@ class BggClient:
             text = await resp.text()
             try:
                 root = ET.fromstring(text)
-            except Exception as e:
+            except ET.ParseError as e:
                 _LOGGER.error("Failed to parse plays XML: %s", e)
                 return {"status": resp.status, "total": 0, "last_play": None}
 
@@ -163,7 +163,7 @@ class BggClient:
             try:
                 root = ET.fromstring(text)
                 return int(root.get("total", 0))
-            except Exception as e:
+            except (ET.ParseError, TypeError, ValueError) as e:
                 _LOGGER.error("Failed to parse game plays XML for %s: %s", game_id, e)
                 return 0
 
@@ -192,7 +192,7 @@ class BggClient:
             text = await resp.text()
             try:
                 root = ET.fromstring(text)
-            except Exception as e:
+            except ET.ParseError as e:
                 _LOGGER.error("Failed to parse collection XML for %s: %s", subtype, e)
                 return {"status": resp.status, "items": []}
 
@@ -290,7 +290,7 @@ class BggClient:
             text = await resp.text()
             try:
                 root = ET.fromstring(text)
-            except Exception as e:
+            except ET.ParseError as e:
                 _LOGGER.error("Failed to parse BGG XML: %s", e)
                 return []
 
@@ -413,6 +413,6 @@ class BggClient:
                     _LOGGER.error("Failed to record play on BGG: %s", resp_text)
                     return False
 
-        except Exception as err:
+        except (aiohttp.ClientError, TimeoutError) as err:
             _LOGGER.error("Error recording play on BGG: %s", err)
             return False
