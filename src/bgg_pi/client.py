@@ -9,7 +9,7 @@ from typing import Any
 
 import aiohttp
 
-from .const import BGG_URL, BASE_URL
+from .const import API_HEADERS, BGG_URL, BASE_URL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,6 +23,7 @@ class BggClient:
         username: str,
         password: str | None = None,
         api_token: str | None = None,
+        user_agent: str | None = None,
     ) -> None:
         """Initialize the client."""
         self.username = username
@@ -30,9 +31,10 @@ class BggClient:
         self.api_token = api_token
         self._session = session
         self.logged_in = False
-        self.headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
-        }
+        self.headers = API_HEADERS.copy()
+
+        if user_agent:
+            self.headers["User-Agent"] = user_agent
 
         if self.api_token:
             self.headers["Authorization"] = f"Bearer {self.api_token}"
